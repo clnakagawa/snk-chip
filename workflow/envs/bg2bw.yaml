@@ -1,0 +1,6 @@
+name: bw2bg
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - ucsc-bedgraphtobigwig=482

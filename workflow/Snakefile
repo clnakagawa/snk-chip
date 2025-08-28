@@ -1,37 +1,60 @@
-# Main entrypoint of the workflow.
-# Please follow the best practices:
-# https://snakemake.readthedocs.io/en/stable/snakefiles/best_practices.html,
-# in particular regarding the standardized folder structure mentioned there.
+# process_fastqs.smk
+import glob
+import os
+import numpy as np
+import pandas as pd
+from pathlib import Path
 
-
-# load configuration
-# -----------------------------------------------------
 configfile: "config/config.yaml"
 
+def get_label(sample_path):
+    if pd.isnull(sample_path):
+        return('')
+    sample_path = Path(sample_path)
+    while sample_path.suffix:
+        sample_path = sample_path.with_suffix("")
+    return(sample_path.name)
 
-# load rules
-# -----------------------------------------------------
-include: "rules/common.smk"
-include: "rules/process_reads.smk"
+sheet = pd.read_csv('/opt/data/cnakagawa/snk-chip/samplesheets/test.csv', index_col = False)
+
+OUTDIR = config["output_dir"]
+HGREF = config["hg38_ref"]
+
+SAMPLES = sheet["sample"].tolist()
+FASTQS = sheet['fastq'].tolist() + [ctrl for ctrl in sheet['control'].tolist() if ctrl == ctrl]
+ALL_SAMPLES = [get_label(fq) for fq in FASTQS]
+FQ_DIRS = [Path(fq).parent.absolute() for fq in FASTQS]
+
+# for initial rules that need the original paths
+sample_to_fq = {
+    s: f"{p}/{s}.fastq.gz"
+    for s, p in zip(ALL_SAMPLES, FQ_DIRS)
+}
+
+# for later peak calling input
+sheet['control'] = [get_label(ctrl) for ctrl in sheet['control'].tolist()]
+sample_to_ctrl = sheet.set_index('sample')['control'].to_dict()
+
+print("=== sample_to_fq mapping ===")
+for k, v in sample_to_fq.items():
+    print(f"{k} -> {v}  (exists: {os.path.exists(v)})")
+print("============================")
+
+print("=== sample_to_control mapping ===")
+for k, v in sample_to_ctrl.items():
+    print(f"{k} -> {v}  (exists: {os.path.exists(v)})")
+print("============================")
 
 
-# optional messages, log and error handling
-# -----------------------------------------------------
-onstart:
-    print("\n--- Analysis started ---\n")
-
-
-onsuccess:
-    print("\n--- Workflow finished! ---\n")
-
-
-onerror:
-    print("\n--- An error occurred! ---\n")
-
-
-# target rules
-# -----------------------------------------------------
 rule all:
     input:
-        "results/multiqc/multiqc_report.html",
-    default_target: True
+        expand(f"{OUTDIR}/QC/{{sample}}", sample=ALL_SAMPLES),
+        expand(f"{OUTDIR}/alignments/{{sample}}.fltr.bam", sample=ALL_SAMPLES),
+        expand(f"{OUTDIR}/alignments/logs/{{sample}}.flagstats.txt", sample=ALL_SAMPLES),
+        expand(f"{OUTDIR}/coverage/{{sample}}.bw", sample=ALL_SAMPLES),
+        expand(f"{OUTDIR}/peaks/{{label}}", label=SAMPLES)
+
+include: "rules/process_fastqs.smk"
+include: "rules/align_fastqs.smk"
+include: "rules/coverage.smk"
+include: "rules/call_peaks.smk"

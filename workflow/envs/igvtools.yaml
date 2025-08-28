@@ -1,0 +1,6 @@
+name: igvtools
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - igvtools=2.3.93

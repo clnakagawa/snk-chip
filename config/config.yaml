@@ -1,8 +1,4 @@
-samplesheet: ".test/config/samples.tsv"
+sample_sheet: "/opt/data/cnakagawa/snk-chip/samplesheets/test.csv"
+hg38_ref: "/opt/data/genomic/references/HomoSapiens/hg38/Homo_sapiens_assembly38.fasta"
+output_dir: "/opt/data/cnakaChIP/Results/tempalltest"
 
-get_genome:
-  ncbi_ftp: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_R64/GCF_000146045.2_R64_genomic.fna.gz
-
-simulate_reads:
-  read_length: 100
-  read_number: 10000
